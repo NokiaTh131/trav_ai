@@ -1,3 +1,4 @@
+from langchain.agents.middleware import SummarizationMiddleware
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
@@ -5,6 +6,8 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.callbacks import StdOutCallbackHandler
 from memvid_sdk import use
+
+from app.chatbot.middleware import state_aware_prompt
 
 load_dotenv()
 
@@ -39,6 +42,12 @@ class TouristGuideAgent:
             max_retries=2,
         )
 
+        self.summarizer = {
+            "model": "llama-3.3-70b-versatile",
+            "trigger": {"tokens": 4000},
+            "keep": {"messages": 20},
+        }
+
         self.checkpointer = InMemorySaver()
 
         # System Prompt
@@ -69,6 +78,14 @@ class TouristGuideAgent:
             self.tools,
             checkpointer=self.checkpointer,
             system_prompt=system_prompt,
+            middleware=[
+                state_aware_prompt,
+                SummarizationMiddleware(
+                    model=self.summarizer["model"],
+                    trigger=self.summarizer["trigger"],
+                    keep=self.summarizer["keep"],
+                ),  # pyright: ignore[reportArgumentType]
+            ],
         )
 
         # Default configuration for the session
