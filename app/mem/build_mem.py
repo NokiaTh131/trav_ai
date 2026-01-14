@@ -9,12 +9,13 @@ load_dotenv()
 # Config
 PROVIDER = "local"  # Use Local DistilBERT to keep RPM at 0
 DATASET_DIR = Path("app/mem/")
-OUTPUT_PATH = "app/mem/thai_guide.mv2"
+OUTPUT_PATH = "app/mem/thai_guide_v2.mv2"
 
 # 1. Initialize
 ner = get_entity_extractor(PROVIDER)
 mem = use("langchain", OUTPUT_PATH, mode="auto")
 mem.enable_lex()
+mem.enable_vec()
 
 pdf_files = list(DATASET_DIR.glob("*.pdf"))
 

@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "./app/chatbot/llm.py:graph"
+  },
+  "env": ".env"
+}

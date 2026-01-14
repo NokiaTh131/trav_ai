@@ -9,6 +9,7 @@ dependencies = [
     "langchain>=1.2.3",
     "langchain-google-genai>=4.2.0",
     "langchain-groq>=1.1.1",
+    "langgraph-cli[inmem]>=0.4.8",
     "memvid-sdk>=2.0.148",
     "pymupdf>=1.26.7",
     "pypdf2>=3.0.1",
