@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 # Configuration
-MEMORY_PATH = "app/mem/thai_guide_v2.mv2"
+MEMORY_PATH = "app/mem/thai_guide.mv2"
 
 
 # 1. Initialize Tools (Memvid)

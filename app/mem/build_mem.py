@@ -9,7 +9,7 @@ load_dotenv()
 # Config
 PROVIDER = "local"  # Use Local DistilBERT to keep RPM at 0
 DATASET_DIR = Path("app/mem/")
-OUTPUT_PATH = "app/mem/thai_guide_v2.mv2"
+OUTPUT_PATH = "app/mem/thai_guide.mv2"
 
 # 1. Initialize
 ner = get_entity_extractor(PROVIDER)
