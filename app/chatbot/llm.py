@@ -1,4 +1,3 @@
-from langchain.agents.middleware import SummarizationMiddleware
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
@@ -17,7 +16,7 @@ class TouristGuideAgent:
         self.memory_path = memory_path
 
         # Load Memvid RAG Tool
-        self.mem = use("langchain", self.memory_path)
+        self.mem = use("langchain", self.memory_path, mode="open")
 
         # Memvid returns a tool or list of tools
         # Ensure self.tools is a list
@@ -80,23 +79,18 @@ class TouristGuideAgent:
             system_prompt=system_prompt,
             middleware=[
                 state_aware_prompt,
-                SummarizationMiddleware(
-                    model=self.summarizer["model"],
-                    trigger=self.summarizer["trigger"],
-                    keep=self.summarizer["keep"],
-                ),  # pyright: ignore[reportArgumentType]
             ],
         )
 
         # Default configuration for the session
-        self.config = {"configurable": {"thread_id": "default_user"}}
+        # self.config = {"configurable": {"thread_id": "default_user"}}
 
-    def chat(self, user_input: str):
+    def chat(self, user_input: str, session_id: str = "default_user"):
         """
         Sends a message to the agent and returns the response.
         Uses ConsoleCallbackHandler to visualize tool calls and streaming.
         """
-        print("\n--- Debug: Agent Trace ---")
+        print(f"\n--- Debug: Agent Trace (Session: {session_id}) ---")
 
         # Prepare the input state
         inputs = {"messages": [("user", user_input)]}
@@ -104,7 +98,10 @@ class TouristGuideAgent:
         try:
             response = self.agent.invoke(
                 inputs,  # pyright: ignore[reportArgumentType]
-                config={**self.config, "callbacks": [StdOutCallbackHandler()]},  # pyright: ignore[reportArgumentType]
+                config={
+                    "configurable": {"thread_id": session_id},
+                    "callbacks": [StdOutCallbackHandler()],
+                },  # pyright: ignore[reportArgumentType]
             )
 
             print("--- End Debug ---\n")
