@@ -15,7 +15,7 @@ This project tests:
 - **Source Citations**: Every response includes a JSON block citing the specific source file and page number.
 - **Entity-Aware Storage**: Data is indexed with local NER (Named Entity Recognition) for high-fidelity retrieval.
 
-## 🛠️ Installation
+## Installation
 
 ### Prerequisites
 - Python 3.12+
