@@ -2,21 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './components/ChatMessage';
 import PDFViewer from './components/PDFViewer';
 import { type Message, type ChatSession, type Source } from './types';
-import { Send, Settings, Key, Plus, MessageSquare, Menu, X, Trash2 } from 'lucide-react';
+import { Send, Settings, Key, Plus, MessageSquare, Menu, X, Trash2, PanelRightClose, PanelLeftClose } from 'lucide-react';
 
 function App() {
-  // --- State: Chat Data ---
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Hello! I am your Thailand Guide. Ask me anything about traveling in Thailand!' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- State: Config ---
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('travai_api_key') || '');
   const [showSettings, setShowSettings] = useState(false);
 
-  // --- State: Sessions (Fetched from backend) ---
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const lastScrollRef = useRef(0);
 
@@ -25,6 +22,7 @@ function App() {
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isPdfOpen, setIsPdfOpen] = useState(true);
 
   const [pdfPage, setPdfPage] = useState<number | null>(null);
   const [pdfSources, setPdfSources] = useState<Source[]>([]);
@@ -147,6 +145,7 @@ function App() {
               if (sources.length > 0) {
                 setPdfSources(sources);
                 setPdfPage(sources[0].page);
+                setIsPdfOpen(true);
               }
 
             } else {
@@ -267,6 +266,7 @@ function App() {
           if (sources.length > 0) {
             setPdfSources(sources);
             setPdfPage(sources[0].page);
+            setIsPdfOpen(true);
           }
 
           setMessages(prev => {
@@ -324,7 +324,7 @@ function App() {
 
       {/* Sidebar */}
       <div className={`
-        ${isSidebarOpen ? 'w-[260px] min-w-[260px]' : 'w-0 min-w-0'}
+        ${isSidebarOpen ? 'w-65 min-w-65' : 'w-0 min-w-0'}
         bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden relative
       `}>
         {/* Sidebar Header */}
@@ -361,7 +361,7 @@ function App() {
             >
               <div className="flex items-center gap-2 overflow-hidden">
                 <MessageSquare size={14} />
-                <span className="truncate max-w-[140px]">{session.title}</span>
+                <span className="truncate max-w-35">{session.title}</span>
               </div>
 
               <button
@@ -391,10 +391,10 @@ function App() {
       <div className="flex-1 flex flex-row relative h-full overflow-hidden">
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col relative h-full min-w-[400px]">
+        <div className="flex-1 flex flex-col relative h-full min-w-100">
 
           {/* Top Bar */}
-          <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-white z-10">
+          <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-white z-10">
             <div className="flex items-center gap-2">
               {!isSidebarOpen && (
                 <button
@@ -406,6 +406,27 @@ function App() {
               )}
               <span className="font-semibold text-gray-700">Travai Guide</span>
             </div>
+
+            {/* PDF Toggle Button */}
+            {pdfSources.length > 0 && (
+              <button
+                onClick={() => setIsPdfOpen(!isPdfOpen)}
+                className={`
+                  flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md transition-colors
+                  text-gray-700 hover:bg-gray-100
+                `}
+              >
+                {isPdfOpen ? (
+                  <>
+                    <PanelRightClose size={24} />
+                  </>
+                ) : (
+                  <>
+                    <PanelLeftClose size={24} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Settings Modal (Overlay) */}
@@ -445,7 +466,7 @@ function App() {
           </div>
 
           {/* Input Area */}
-          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
+          <div className="absolute bottom-0 left-0 w-full bg-linear-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
             <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl shadow-sm flex items-center p-2 focus-within:ring-1 focus-within:ring-gray-300 transition-shadow">
               <input
                 type="text"
@@ -477,7 +498,7 @@ function App() {
 
         {/* PDF Viewer (Right Side) */}
         {pdfUrl && pdfSources.length > 0 &&
-          <div className="w-[40%] min-w-75 h-full hidden md:block">
+          <div className={`${isPdfOpen ? `w-[40%] min-w-75` : `w-0 min-w-0`} transition-all duration-300 h-full hidden md:block border-l border-gray-200`}>
             <PDFViewer
               fileUrl={pdfUrl}
               pageNumber={pdfPage}
