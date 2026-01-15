@@ -9,15 +9,12 @@ load_dotenv()
 # Configuration
 MEMORY_PATH = "app/mem/thai_guide.mv2"
 
-
 # 1. Initialize Tools (Memvid)
-# Ensure memory path exists or handle appropriately
 if not os.path.exists(MEMORY_PATH):
     print(f"Warning: Memory path {MEMORY_PATH} does not exist.")
 
 mem = use("langchain", MEMORY_PATH, mode="open")
 tools = mem.tools if isinstance(mem.tools, list) else [mem.tools]
-
 
 # 2. Initialize LLM
 llm = ChatGroq(
@@ -52,9 +49,14 @@ system_prompt = (
     "   Ensure the JSON block is the very last thing in your response."
 )
 
-# 4. Create Graph
-graph = create_agent(
-    llm,
-    tools,
-    system_prompt=system_prompt,
-)
+
+def create_travai_graph(checkpointer=None):
+    """
+    Creates and compiles the agent graph with an optional checkpointer.
+    """
+    return create_agent(
+        llm,
+        tools,
+        system_prompt=system_prompt,
+        checkpointer=checkpointer,
+    )
