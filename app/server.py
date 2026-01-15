@@ -1,10 +1,11 @@
 import os
 import json
+import re
 import uvicorn
 import uuid
 import sqlite3
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import APIKeyHeader
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,8 @@ load_dotenv()
 graph = None
 checkpointer_instance = None
 DB_PATH = "checkpoints.sqlite"
+
+FOUND_RESULTS_REGEX = re.compile(r"^Found\s+\d+\s+results", re.IGNORECASE)
 
 
 # Helper for metadata management (synchronous sqlite3 for simplicity in metadata operations)
@@ -151,11 +154,18 @@ async def get_history(thread_id: str):
 
     config = {"configurable": {"thread_id": thread_id}}
     try:
-        snapshot = await graph.aget_state(config)
+        snapshot = await graph.aget_state(config)  # pyright: ignore[reportArgumentType]
         if snapshot.values and "messages" in snapshot.values:
             messages = snapshot.values["messages"]
             history = []
             for msg in messages:
+                content = msg.content
+                if (
+                    content.startswith("Answer: ")
+                    or not content
+                    or FOUND_RESULTS_REGEX.match(content.strip())
+                ):
+                    continue
                 role = "assistant"
                 if msg.type == "human":
                     role = "user"
@@ -163,7 +173,7 @@ async def get_history(thread_id: str):
                     role = "assistant"
                 elif msg.type == "system":
                     role = "system"
-                history.append({"role": role, "content": msg.content})
+                history.append({"role": role, "content": content})
             return {"messages": history}
         return {"messages": []}
     except Exception as e:
@@ -204,15 +214,15 @@ async def stream_agent(request: Request):
     if not thread_id:
         thread_id = str(uuid.uuid4())
 
-    # Auto-create metadata entry if new
-    # We give it a default title "New Chat" which frontend will update later
     save_thread_metadata(thread_id, "New Chat")
 
     async def event_generator():
         try:
             config = {"configurable": {"thread_id": thread_id}}
-            async for event in graph.astream_events(
-                {"messages": messages}, config=config, version="v2"
+            async for event in graph.astream_events(  # pyright: ignore[reportOptionalMemberAccess]
+                {"messages": messages},
+                config=config,  # pyright: ignore[reportArgumentType]
+                version="v2",  # pyright: ignore[reportArgumentType]
             ):
                 kind = event["event"]
                 if kind == "on_chat_model_stream":

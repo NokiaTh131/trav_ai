@@ -18,7 +18,7 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
   const [numPages, setNumPages] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSourcesOpen, setIsSourcesOpen] = useState<boolean>(true);
+  const [isSourcesOpen, setIsSourcesOpen] = useState<boolean>(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
 

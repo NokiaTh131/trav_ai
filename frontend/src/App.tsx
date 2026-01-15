@@ -18,6 +18,7 @@ function App() {
 
   // --- State: Sessions (Fetched from backend) ---
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const lastScrollRef = useRef(0);
 
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
     return localStorage.getItem('travai_current_session_id') || crypto.randomUUID();
@@ -73,10 +74,11 @@ function App() {
         const jsonStr = match[1];
         const data = JSON.parse(jsonStr);
         if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-          // Extract ALL sources instead of just the first one
+
           const sources: Source[] = data.sources.map((s: any) => ({ page: s.page }));
-          // Remove the JSON block from content
+
           const cleanedContent = content.replace(jsonBlockRegex, '').trim();
+
           return { cleanedContent, sources };
         }
       } catch (e) {
@@ -95,15 +97,25 @@ function App() {
     localStorage.setItem('travai_current_session_id', currentSessionId);
   }, [currentSessionId]);
 
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const now = Date.now();
+
+    if (now - lastScrollRef.current < 120) return;
+
+    lastScrollRef.current = now;
+
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+      });
+    });
   }, [messages]);
 
   useEffect(() => {
     const loadSession = async () => {
       if (!apiKey) return;
 
-      // Reset PDF page when switching sessions
       setPdfPage(null);
       setPdfSources([]);
 
