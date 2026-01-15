@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './components/ChatMessage';
 import PDFViewer from './components/PDFViewer';
-import { type Message, type ChatSession } from './types';
+import { type Message, type ChatSession, type Source } from './types';
 import { Send, Settings, Key, Plus, MessageSquare, Menu, X, Trash2 } from 'lucide-react';
 
 function App() {
@@ -26,6 +26,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const [pdfPage, setPdfPage] = useState<number | null>(null);
+  const [pdfSources, setPdfSources] = useState<Source[]>([]);
   const pdfUrl = "/thourist_thailand_guide.pdf";
 
 
@@ -63,7 +64,7 @@ function App() {
     }
   };
 
-  const processContentForSources = (content: string): { cleanedContent: string; page: number | null } => {
+  const processContentForSources = (content: string): { cleanedContent: string; sources: Source[] } => {
     // Regex to find the JSON block at the end of the message
     // Matches ```json ... ``` at the end of string
     const jsonBlockRegex = /```json\s*(\{[\s\S]*?"sources"[\s\S]*?\})\s*```\s*$/;
@@ -74,16 +75,17 @@ function App() {
         const jsonStr = match[1];
         const data = JSON.parse(jsonStr);
         if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-          const page = data.sources[0].page;
+          // Extract ALL sources instead of just the first one
+          const sources: Source[] = data.sources.map((s: any) => ({ page: s.page }));
           // Remove the JSON block from content
           const cleanedContent = content.replace(jsonBlockRegex, '').trim();
-          return { cleanedContent, page };
+          return { cleanedContent, sources };
         }
       } catch (e) {
         console.warn("Failed to parse source JSON:", e);
       }
     }
-    return { cleanedContent: content, page: null };
+    return { cleanedContent: content, sources: [] };
   };
 
 
@@ -111,6 +113,7 @@ function App() {
 
       // Reset PDF page when switching sessions
       setPdfPage(null);
+      setPdfSources([]);
 
       try {
         setIsLoading(true);
@@ -126,7 +129,7 @@ function App() {
             // Process the last message to see if we should set the PDF page
             const lastMsg = data.messages[data.messages.length - 1];
             if (lastMsg.role === 'assistant') {
-              const { page } = processContentForSources(lastMsg.content);
+              const { sources } = processContentForSources(lastMsg.content);
               // We don't modify history here, just set the page if found
               // But wait, if we want to filter it out from history view, we should process all history?
               // The prompt says "filter this out at frontend chat message". 
@@ -141,7 +144,10 @@ function App() {
               });
 
               setMessages(cleanedMessages);
-              if (page) setPdfPage(page);
+              if (sources.length > 0) {
+                setPdfSources(sources);
+                setPdfPage(sources[0].page);
+              }
 
             } else {
               setMessages(data.messages);
@@ -167,6 +173,7 @@ function App() {
     setCurrentSessionId(newId);
     setMessages([{ role: 'assistant', content: 'Hello! I am your Thailand Guide. Ask me anything about traveling in Thailand!' }]);
     setPdfPage(null);
+    setPdfSources([]);
 
     if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
@@ -258,8 +265,11 @@ function App() {
 
         if (done) {
           // Stream finished. Final processing for source JSON.
-          const { cleanedContent, page } = processContentForSources(aiContent);
-          if (page) setPdfPage(page);
+          const { cleanedContent, sources } = processContentForSources(aiContent);
+          if (sources.length > 0) {
+            setPdfSources(sources);
+            setPdfPage(sources[0].page);
+          }
 
           setMessages(prev => {
             const newMsgs = [...prev];
@@ -468,9 +478,14 @@ function App() {
         </div>
 
         {/* PDF Viewer (Right Side) */}
-        {pdfUrl && pdfPage &&
+        {pdfUrl && pdfSources.length > 0 &&
           <div className="w-[40%] min-w-75 h-full hidden md:block">
-            <PDFViewer fileUrl={pdfUrl} pageNumber={pdfPage} />
+            <PDFViewer 
+              fileUrl={pdfUrl} 
+              pageNumber={pdfPage} 
+              sources={pdfSources}
+              onPageChange={setPdfPage}
+            />
           </div>}
 
       </div>

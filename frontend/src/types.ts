@@ -18,3 +18,7 @@ export interface ChatSession {
   title: string;
   createdAt: string; // Changed from number to string to match SQLite timestamp
 }
+
+export interface Source {
+  page: number;
+}
