@@ -110,6 +110,14 @@ function App() {
     });
   }, [messages]);
 
+  const handleViewSources = (sources: Source[]) => {
+    setPdfSources(sources);
+    if (sources.length > 0) {
+      setPdfPage(sources[0].page);
+      setIsPdfOpen(true);
+    }
+  };
+
   useEffect(() => {
     const loadSession = async () => {
       if (!apiKey) return;
@@ -135,8 +143,8 @@ function App() {
 
               const cleanedMessages = data.messages.map((msg: Message) => {
                 if (msg.role === 'assistant') {
-                  const { cleanedContent } = processContentForSources(msg.content);
-                  return { ...msg, content: cleanedContent };
+                  const { cleanedContent, sources } = processContentForSources(msg.content);
+                  return { ...msg, content: cleanedContent, sources };
                 }
                 return msg;
               });
@@ -271,7 +279,7 @@ function App() {
 
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1] = { role: 'assistant', content: cleanedContent };
+            newMsgs[newMsgs.length - 1] = { role: 'assistant', content: cleanedContent, sources };
             return newMsgs;
           });
           break;
@@ -459,7 +467,7 @@ function App() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto pt-8 pb-32">
               {messages.map((msg, idx) => (
-                <ChatMessage key={idx} message={msg} />
+                <ChatMessage key={idx} message={msg} onViewSources={handleViewSources} />
               ))}
               <div ref={messagesEndRef} />
             </div>

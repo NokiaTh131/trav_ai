@@ -1,14 +1,15 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, User } from 'lucide-react';
-import { type Message } from '../types';
+import { Bot, User, BookOpen } from 'lucide-react';
+import { type Message, type Source } from '../types';
 
 interface ChatMessageProps {
   message: Message;
+  onViewSources?: (sources: Source[]) => void;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => {
   const isUser = message.role === 'user';
 
   return (
@@ -38,6 +39,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           `}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
           </div>
+
+          {/* Sources Button */}
+          {!isUser && message.sources && message.sources.length > 0 && onViewSources && (
+            <button
+              onClick={() => onViewSources(message.sources!)}
+              className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-md transition-colors w-fit"
+            >
+              <BookOpen size={14} />
+              <span>View {message.sources.length} Source{message.sources.length > 1 ? 's' : ''}</span>
+            </button>
+          )}
         </div>
 
       </div>
