@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './components/ChatMessage';
+import PDFViewer from './components/PDFViewer';
 import { type Message, type ChatSession } from './types';
 import { Send, Settings, Key, Plus, MessageSquare, Menu, X, Trash2 } from 'lucide-react';
 
@@ -17,17 +18,19 @@ function App() {
 
   // --- State: Sessions (Fetched from backend) ---
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  
+
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
     return localStorage.getItem('travai_current_session_id') || crypto.randomUUID();
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // --- Refs ---
+  const [pdfPage, setPdfPage] = useState<number | null>(null);
+  const pdfUrl = "/thourist_thailand_guide.pdf";
+
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- Helpers ---
   const fetchSessions = async () => {
     if (!apiKey) return;
     try {
@@ -48,7 +51,7 @@ function App() {
     try {
       await fetch(`http://localhost:2024/threads/${id}`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'X-API-Key': apiKey,
           'Content-Type': 'application/json'
         },
@@ -59,6 +62,30 @@ function App() {
       console.error("Failed to update title", e);
     }
   };
+
+  const processContentForSources = (content: string): { cleanedContent: string; page: number | null } => {
+    // Regex to find the JSON block at the end of the message
+    // Matches ```json ... ``` at the end of string
+    const jsonBlockRegex = /```json\s*(\{[\s\S]*?"sources"[\s\S]*?\})\s*```\s*$/;
+    const match = content.match(jsonBlockRegex);
+
+    if (match) {
+      try {
+        const jsonStr = match[1];
+        const data = JSON.parse(jsonStr);
+        if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
+          const page = data.sources[0].page;
+          // Remove the JSON block from content
+          const cleanedContent = content.replace(jsonBlockRegex, '').trim();
+          return { cleanedContent, page };
+        }
+      } catch (e) {
+        console.warn("Failed to parse source JSON:", e);
+      }
+    }
+    return { cleanedContent: content, page: null };
+  };
+
 
   // --- Effects ---
 
@@ -80,10 +107,10 @@ function App() {
   // Load History when switching sessions
   useEffect(() => {
     const loadSession = async () => {
-      // Check if session exists in our list (if populated)
-      // If the sessions list is empty (first load), we might still fetch history if ID exists
-      
       if (!apiKey) return;
+
+      // Reset PDF page when switching sessions
+      setPdfPage(null);
 
       try {
         setIsLoading(true);
@@ -96,10 +123,31 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-            setMessages(data.messages);
+            // Process the last message to see if we should set the PDF page
+            const lastMsg = data.messages[data.messages.length - 1];
+            if (lastMsg.role === 'assistant') {
+              const { page } = processContentForSources(lastMsg.content);
+              // We don't modify history here, just set the page if found
+              // But wait, if we want to filter it out from history view, we should process all history?
+              // The prompt says "filter this out at frontend chat message". 
+              // Let's clean the history for display.
+
+              const cleanedMessages = data.messages.map((msg: Message) => {
+                if (msg.role === 'assistant') {
+                  const { cleanedContent } = processContentForSources(msg.content);
+                  return { ...msg, content: cleanedContent };
+                }
+                return msg;
+              });
+
+              setMessages(cleanedMessages);
+              if (page) setPdfPage(page);
+
+            } else {
+              setMessages(data.messages);
+            }
           } else {
-             // New or empty session
-             setMessages([{ role: 'assistant', content: 'Hello! I am your Thailand Guide. Ask me anything about traveling in Thailand!' }]);
+            setMessages([{ role: 'assistant', content: 'Hello! I am your Thailand Guide. Ask me anything about traveling in Thailand!' }]);
           }
         }
       } catch (err) {
@@ -110,7 +158,7 @@ function App() {
     };
 
     loadSession();
-  }, [currentSessionId, apiKey]); 
+  }, [currentSessionId, apiKey]);
 
   // --- Handlers ---
 
@@ -118,9 +166,8 @@ function App() {
     const newId = crypto.randomUUID();
     setCurrentSessionId(newId);
     setMessages([{ role: 'assistant', content: 'Hello! I am your Thailand Guide. Ask me anything about traveling in Thailand!' }]);
-    
-    // We don't add to sessions list yet; backend creates it on first message
-    
+    setPdfPage(null);
+
     if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
@@ -172,11 +219,10 @@ function App() {
     }
 
     const isNewSession = !sessions.find(s => s.id === currentSessionId);
-    
-    // Optimistic UI updates
+
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = input; // Capture for title generation
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
@@ -197,9 +243,7 @@ function App() {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error("No response body");
 
-      // If this was a new session, refresh list and update title
       if (isNewSession) {
-        // Generate title
         const title = currentInput.slice(0, 30) + (currentInput.length > 30 ? '...' : '');
         await updateThreadTitle(currentSessionId, title);
         fetchSessions();
@@ -211,7 +255,19 @@ function App() {
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+
+        if (done) {
+          // Stream finished. Final processing for source JSON.
+          const { cleanedContent, page } = processContentForSources(aiContent);
+          if (page) setPdfPage(page);
+
+          setMessages(prev => {
+            const newMsgs = [...prev];
+            newMsgs[newMsgs.length - 1] = { role: 'assistant', content: cleanedContent };
+            return newMsgs;
+          });
+          break;
+        }
 
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n\n');
@@ -223,16 +279,17 @@ function App() {
             try {
               if (dataStr === '{}') continue;
               const data = JSON.parse(dataStr);
-              
+
               if (typeof data.content === 'string') {
-                 aiContent += data.content;
+                aiContent += data.content;
               }
+
               if (aiContent) {
-                  setMessages(prev => {
-                    const newMsgs = [...prev];
-                    newMsgs[newMsgs.length - 1] = { role: 'assistant', content: aiContent };
-                    return newMsgs;
-                  });
+                setMessages(prev => {
+                  const newMsgs = [...prev];
+                  newMsgs[newMsgs.length - 1] = { role: 'assistant', content: aiContent };
+                  return newMsgs;
+                });
               }
             } catch (e) {
               console.warn("Error parsing chunk:", e);
@@ -256,7 +313,7 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen bg-white text-gray-900 font-sans">
-      
+
       {/* Sidebar */}
       <div className={`
         ${isSidebarOpen ? 'w-[260px] min-w-[260px]' : 'w-0 min-w-0'}
@@ -264,17 +321,17 @@ function App() {
       `}>
         {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between">
-          <button 
-             onClick={() => setIsSidebarOpen(false)}
-             className="text-gray-500 hover:bg-gray-200 p-1 rounded-md"
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="text-gray-500 hover:bg-gray-200 p-1 rounded-md"
           >
-             <X size={20} />
+            <X size={20} />
           </button>
         </div>
 
         {/* New Chat Button */}
         <div className="px-3 pb-4">
-          <button 
+          <button
             onClick={handleCreateNewChat}
             className="w-full flex items-center justify-start gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 shadow-sm transition-colors"
           >
@@ -286,7 +343,7 @@ function App() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1">
           <div className="text-xs font-semibold text-gray-400 px-2 py-2 uppercase tracking-wider">Recent</div>
           {sessions.map(session => (
-            <div 
+            <div
               key={session.id}
               onClick={() => setCurrentSessionId(session.id)}
               className={`
@@ -298,7 +355,7 @@ function App() {
                 <MessageSquare size={14} />
                 <span className="truncate max-w-[140px]">{session.title}</span>
               </div>
-              
+
               <button
                 onClick={(e) => handleDeleteSession(e, session.id)}
                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1"
@@ -309,102 +366,113 @@ function App() {
             </div>
           ))}
         </div>
-        
+
         {/* Settings Area */}
-         <div className="p-4 border-t border-gray-200">
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full"
-            >
-              <Settings size={16} /> API Settings
-            </button>
-         </div>
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full"
+          >
+            <Settings size={16} /> API Settings
+          </button>
+        </div>
       </div>
 
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative h-full">
-        
-        {/* Top Bar */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            {!isSidebarOpen && (
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="text-gray-500 hover:bg-gray-100 p-1 rounded-md"
-              >
-                <Menu size={20} />
-              </button>
-            )}
-            <span className="font-semibold text-gray-700">Travai Guide</span>
-          </div>
-        </div>
+      {/* Main Content Area (Chat + PDF) */}
+      <div className="flex-1 flex flex-row relative h-full overflow-hidden">
 
-        {/* Settings Modal (Overlay) */}
-        {showSettings && (
-          <div className="absolute top-16 right-4 w-80 bg-white border border-gray-200 rounded-xl shadow-xl p-4 z-50">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-gray-800">Configuration</h3>
-              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={16} />
-              </button>
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col relative h-full min-w-[400px]">
+
+          {/* Top Bar */}
+          <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-white z-10">
+            <div className="flex items-center gap-2">
+              {!isSidebarOpen && (
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="text-gray-500 hover:bg-gray-100 p-1 rounded-md"
+                >
+                  <Menu size={20} />
+                </button>
+              )}
+              <span className="font-semibold text-gray-700">Travai Guide</span>
             </div>
-            
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2">API KEY</label>
-              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                <Key size={14} className="text-gray-400 mr-2" />
-                <input 
-                  type="password" 
-                  value={apiKey} 
-                  onChange={handleSaveApiKey} 
-                  placeholder="sk-..."
-                  className="bg-transparent border-none text-sm w-full focus:outline-none text-gray-800"
-                />
+          </div>
+
+          {/* Settings Modal (Overlay) */}
+          {showSettings && (
+            <div className="absolute top-16 right-4 w-80 bg-white border border-gray-200 rounded-xl shadow-xl p-4 z-50">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-gray-800">Configuration</h3>
+                <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-2">API KEY</label>
+                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  <Key size={14} className="text-gray-400 mr-2" />
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={handleSaveApiKey}
+                    placeholder="sk-..."
+                    className="bg-transparent border-none text-sm w-full focus:outline-none text-gray-800"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto pt-8 pb-32">
-            {messages.map((msg, idx) => (
-              <ChatMessage key={idx} message={msg} />
-            ))}
-            <div ref={messagesEndRef} />
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-3xl mx-auto pt-8 pb-32">
+              {messages.map((msg, idx) => (
+                <ChatMessage key={idx} message={msg} />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Input Area */}
+          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
+            <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl shadow-sm flex items-center p-2 focus-within:ring-1 focus-within:ring-gray-300 transition-shadow">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
+                placeholder="Ask anything..."
+                className="flex-1 bg-transparent border-none px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none text-base"
+                disabled={isLoading}
+              />
+              <button
+                onClick={handleSubmit}
+                disabled={isLoading || !input.trim()}
+                className={`
+                    p-2 rounded-xl transition-all duration-200
+                    ${isLoading || !input.trim()
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-black text-white hover:bg-gray-800 shadow-md'}
+                `}
+              >
+                <Send size={18} />
+              </button>
+            </div>
+            <div className="text-center mt-3 text-xs text-gray-400">
+              Travai Guide can make mistakes. Check sources provided.
+            </div>
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
-          <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl shadow-sm flex items-center p-2 focus-within:ring-1 focus-within:ring-gray-300 transition-shadow">
-            <input 
-              type="text" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
-              placeholder="Ask anything..."
-              className="flex-1 bg-transparent border-none px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none text-base"
-              disabled={isLoading}
-            />
-            <button 
-              onClick={handleSubmit} 
-              disabled={isLoading || !input.trim()}
-              className={`
-                p-2 rounded-xl transition-all duration-200
-                ${isLoading || !input.trim() 
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                  : 'bg-black text-white hover:bg-gray-800 shadow-md'}
-              `}
-            >
-              <Send size={18} />
-            </button>
-          </div>
-          <div className="text-center mt-3 text-xs text-gray-400">
-            Travai Guide can make mistakes. Check sources provided.
-          </div>
-        </div>
+        {/* PDF Viewer (Right Side) */}
+        {pdfUrl && pdfPage &&
+          <div className="w-[40%] min-w-75 h-full hidden md:block">
+            <PDFViewer fileUrl={pdfUrl} pageNumber={pdfPage} />
+          </div>}
+
       </div>
     </div>
   );
