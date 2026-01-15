@@ -65,8 +65,6 @@ function App() {
   };
 
   const processContentForSources = (content: string): { cleanedContent: string; sources: Source[] } => {
-    // Regex to find the JSON block at the end of the message
-    // Matches ```json ... ``` at the end of string
     const jsonBlockRegex = /```json\s*(\{[\s\S]*?"sources"[\s\S]*?\})\s*```\s*$/;
     const match = content.match(jsonBlockRegex);
 
@@ -89,24 +87,18 @@ function App() {
   };
 
 
-  // --- Effects ---
-
-  // Initial Load of Sessions
   useEffect(() => {
     fetchSessions();
   }, [apiKey]);
 
-  // Persist current session ID
   useEffect(() => {
     localStorage.setItem('travai_current_session_id', currentSessionId);
   }, [currentSessionId]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load History when switching sessions
   useEffect(() => {
     const loadSession = async () => {
       if (!apiKey) return;
@@ -126,14 +118,10 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-            // Process the last message to see if we should set the PDF page
+            // Process the last message to see if should set the PDF page
             const lastMsg = data.messages[data.messages.length - 1];
             if (lastMsg.role === 'assistant') {
               const { sources } = processContentForSources(lastMsg.content);
-              // We don't modify history here, just set the page if found
-              // But wait, if we want to filter it out from history view, we should process all history?
-              // The prompt says "filter this out at frontend chat message". 
-              // Let's clean the history for display.
 
               const cleanedMessages = data.messages.map((msg: Message) => {
                 if (msg.role === 'assistant') {
@@ -166,7 +154,6 @@ function App() {
     loadSession();
   }, [currentSessionId, apiKey]);
 
-  // --- Handlers ---
 
   const handleCreateNewChat = () => {
     const newId = crypto.randomUUID();
@@ -184,7 +171,6 @@ function App() {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this chat permanently?")) return;
 
-    // Optimistic update
     const newSessions = sessions.filter(s => s.id !== id);
     setSessions(newSessions);
 
@@ -480,9 +466,9 @@ function App() {
         {/* PDF Viewer (Right Side) */}
         {pdfUrl && pdfSources.length > 0 &&
           <div className="w-[40%] min-w-75 h-full hidden md:block">
-            <PDFViewer 
-              fileUrl={pdfUrl} 
-              pageNumber={pdfPage} 
+            <PDFViewer
+              fileUrl={pdfUrl}
+              pageNumber={pdfPage}
               sources={pdfSources}
               onPageChange={setPdfPage}
             />
