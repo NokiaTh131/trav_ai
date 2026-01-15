@@ -101,7 +101,7 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
   return (
     <div className="h-full flex flex-col border-l border-gray-300 bg-gray-100">
       {/* Header with toggle button */}
-      <div className="p-3 bg-white border-b border-gray-200 font-semibold flex items-center justify-between">
+      <div className="p-3 bg-white text-gray-700 border-b border-gray-200 font-semibold flex items-center justify-between">
         <span>Guidebook Viewer</span>
 
         {/* Toggle sources button - only show if sources exist */}
