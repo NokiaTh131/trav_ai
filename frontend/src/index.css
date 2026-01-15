@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Global overrides if needed, but Tailwind defaults are usually good */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
