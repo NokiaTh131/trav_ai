@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './components/ChatMessage';
 import PDFViewer from './components/PDFViewer';
+import Sidebar from './components/Sidebar';
+import ChatHeader from './components/ChatHeader';
+import ChatInput from './components/ChatInput';
+import SettingsModal from './components/SettingsModal';
 import { type Message, type ChatSession, type Source } from './types';
-import { Send, Settings, Key, Plus, MessageSquare, Menu, X, Trash2, PanelRightClose, PanelLeftClose } from 'lucide-react';
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -330,70 +333,16 @@ function App() {
   return (
     <div className="flex h-screen w-screen bg-white text-gray-900 font-sans">
 
-      {/* Sidebar */}
-      <div className={`
-        ${isSidebarOpen ? 'w-65 min-w-65' : 'w-0 min-w-0'}
-        bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden relative
-      `}>
-        {/* Sidebar Header */}
-        <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="text-gray-500 hover:bg-gray-200 p-1 rounded-md"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* New Chat Button */}
-        <div className="px-3 pb-4">
-          <button
-            onClick={handleCreateNewChat}
-            className="w-full flex items-center justify-start gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 shadow-sm transition-colors"
-          >
-            <Plus size={16} /> New Chat
-          </button>
-        </div>
-
-        {/* Session List */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1">
-          <div className="text-xs font-semibold text-gray-400 px-2 py-2 uppercase tracking-wider">Recent</div>
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              onClick={() => setCurrentSessionId(session.id)}
-              className={`
-                group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm
-                ${currentSessionId === session.id ? 'bg-gray-200 text-gray-900' : 'text-gray-600 hover:bg-gray-100'}
-              `}
-            >
-              <div className="flex items-center gap-2 overflow-hidden">
-                <MessageSquare size={14} />
-                <span className="truncate max-w-35">{session.title}</span>
-              </div>
-
-              <button
-                onClick={(e) => handleDeleteSession(e, session.id)}
-                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1"
-                title="Delete Chat"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Settings Area */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full"
-          >
-            <Settings size={16} /> API Settings
-          </button>
-        </div>
-      </div>
-
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onNewChat={handleCreateNewChat}
+        onSelectSession={setCurrentSessionId}
+        onDeleteSession={handleDeleteSession}
+        onOpenSettings={() => setShowSettings(!showSettings)}
+      />
 
       {/* Main Content Area (Chat + PDF) */}
       <div className="flex-1 flex flex-row relative h-full overflow-hidden">
@@ -401,67 +350,20 @@ function App() {
         {/* Chat Area */}
         <div className="flex-1 flex flex-col relative h-full min-w-100">
 
-          {/* Top Bar */}
-          <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-white z-10">
-            <div className="flex items-center gap-2">
-              {!isSidebarOpen && (
-                <button
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="text-gray-500 hover:bg-gray-100 p-1 rounded-md"
-                >
-                  <Menu size={20} />
-                </button>
-              )}
-              <span className="font-semibold text-gray-700">Travai Guide</span>
-            </div>
+          <ChatHeader
+            isSidebarOpen={isSidebarOpen}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
+            hasPdf={pdfSources.length > 0}
+            isPdfOpen={isPdfOpen}
+            onTogglePdf={() => setIsPdfOpen(!isPdfOpen)}
+          />
 
-            {/* PDF Toggle Button */}
-            {pdfSources.length > 0 && (
-              <button
-                onClick={() => setIsPdfOpen(!isPdfOpen)}
-                className={`
-                  flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md transition-colors
-                  text-gray-700 hover:bg-gray-100
-                `}
-              >
-                {isPdfOpen ? (
-                  <>
-                    <PanelRightClose size={24} />
-                  </>
-                ) : (
-                  <>
-                    <PanelLeftClose size={24} />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* Settings Modal (Overlay) */}
-          {showSettings && (
-            <div className="absolute top-16 right-4 w-80 bg-white border border-gray-200 rounded-xl shadow-xl p-4 z-50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-gray-800">Configuration</h3>
-                <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2">API KEY</label>
-                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                  <Key size={14} className="text-gray-400 mr-2" />
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={handleSaveApiKey}
-                    placeholder="sk-..."
-                    className="bg-transparent border-none text-sm w-full focus:outline-none text-gray-800"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <SettingsModal
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            apiKey={apiKey}
+            onApiKeyChange={handleSaveApiKey}
+          />
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto">
@@ -473,35 +375,12 @@ function App() {
             </div>
           </div>
 
-          {/* Input Area */}
-          <div className="absolute bottom-0 left-0 w-full bg-linear-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
-            <div className="max-w-3xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl shadow-sm flex items-center p-2 focus-within:ring-1 focus-within:ring-gray-300 transition-shadow">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
-                placeholder="Ask anything..."
-                className="flex-1 bg-transparent border-none px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none text-base"
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleSubmit}
-                disabled={isLoading || !input.trim()}
-                className={`
-                    p-2 rounded-xl transition-all duration-200
-                    ${isLoading || !input.trim()
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-black text-white hover:bg-gray-800 shadow-md'}
-                `}
-              >
-                <Send size={18} />
-              </button>
-            </div>
-            <div className="text-center mt-3 text-xs text-gray-400">
-              Travai Guide can make mistakes. Check sources provided.
-            </div>
-          </div>
+          <ChatInput
+            input={input}
+            isLoading={isLoading}
+            onChange={setInput}
+            onSubmit={handleSubmit}
+          />
         </div>
 
         {/* PDF Viewer (Right Side) */}

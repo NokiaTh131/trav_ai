@@ -60,6 +60,8 @@ langgraph dev
 ```text
 travai/
 ├── app/
+│   ├── server.py        # FastAPI server
+│   │           
 │   ├── chatbot/
 │   │   └── llm.py        # Agent definition, LangGraph setup, and System Prompt
 │   └── mem/

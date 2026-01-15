@@ -1,73 +1,69 @@
-# React + TypeScript + Vite
+# Travai Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for Travai, an AI-powered Thailand Travel Guide. It provides a chat interface that interacts with the backend API and displays relevant information from the Thailand Guide PDF with direct citations.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **AI Chat Interface**: Interactive chat with context-aware responses.
+- **Session Management**: Create, delete, and switch between multiple chat sessions.
+- **Integrated PDF Viewer**: seamless split-screen view of the "Tourist Thailand Guide" PDF.
+- **Smart Citations**: Assistant responses include citation buttons that automatically open the PDF viewer to the relevant page.
+- **Rich Text Support**: Full Markdown support including tables, lists, and code blocks using GitHub Flavored Markdown (GFM).
+- **Responsive Design**: Collapsible sidebar and PDF viewer for optimal viewing on different screen sizes.
+- **Configuration**: User-configurable API Key settings.
 
-## React Compiler
+## Technology Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: React 19, Vite
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Markdown Rendering**: react-markdown, remark-gfm
+- **PDF Rendering**: pdfjs-dist
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js (Latest LTS recommended)
+- npm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clone the repository.
+2. Install dependencies:
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Start the development server:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+The application will be available at `http://localhost:5173` (default Vite port).
+
+### Building for Production
+
+Build the application for production:
+
+```bash
+npm run build
+```
+
+The output will be in the `dist` directory.
+
+### Configuration
+
+On the first launch, open the settings (gear icon in the sidebar) and enter your API Key to authenticate with the backend services.
+
+## Project Structure
+
+- `src/components/`: Reusable UI components (ChatHeader, ChatInput, Sidebar, PDFViewer, etc.)
+- `src/types.ts`: TypeScript definitions for the application.
+- `src/App.tsx`: Main application layout and state management.
+- `public/`: Static assets including the guide PDF.
