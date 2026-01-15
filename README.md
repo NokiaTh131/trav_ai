@@ -1,6 +1,14 @@
-# Travai 
+**Travai** is Thailand tourist guide agent with blazing fast RAG query. 
 
-**Travai** is an experimental project designed to demonstrate the power of **Memvid (OpenSource)** when integrated with **LangChain**.
+![Langchain](https://img.shields.io/badge/langchain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
+![FastAPI](https://img.shields.io/badge/fastapi-109989?style=for-the-badge&logo=FASTAPI&logoColor=white)
+![Sqlite](https://img.shields.io/badge/Sqlite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
+
+*this is an experimental project designed to demonstrate the power of **[memvid](https://github.com/memvid/memvid)** when integrated with **LangChain**.*
+
+<img width="1919" height="940" alt="screenshot-travai" src="https://github.com/user-attachments/assets/5b9b590f-b174-4b74-b0ae-bcbce66b24c7" />
 
 The goal is to explore how Memvid can serve as an efficient knowledge retrieval layer for LLM agents. This specific implementation builds a **Thailand Tourist Guide** that strictly answers questions based on ingested PDF guidebooks, providing precise page citations.
 
