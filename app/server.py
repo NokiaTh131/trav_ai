@@ -14,44 +14,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Fix for 'Connection' object has no attribute 'is_alive' bug in langgraph-checkpoint-sqlite
-class FixedAsyncSqliteSaver(AsyncSqliteSaver):
-    async def setup(self) -> None:
-        async with self.lock:
-            if self.is_setup:
-                return
-
-            async with self.conn.executescript(
-                """
-                PRAGMA journal_mode=WAL;
-                CREATE TABLE IF NOT EXISTS checkpoints (
-                    thread_id TEXT NOT NULL,
-                    checkpoint_ns TEXT NOT NULL DEFAULT '',
-                    checkpoint_id TEXT NOT NULL,
-                    parent_checkpoint_id TEXT,
-                    type TEXT,
-                    checkpoint BLOB,
-                    metadata BLOB,
-                    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
-                );
-                CREATE TABLE IF NOT EXISTS writes (
-                    thread_id TEXT NOT NULL,
-                    checkpoint_ns TEXT NOT NULL DEFAULT '',
-                    checkpoint_id TEXT NOT NULL,
-                    task_id TEXT NOT NULL,
-                    idx INTEGER NOT NULL,
-                    channel TEXT NOT NULL,
-                    type TEXT,
-                    value BLOB,
-                    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
-                );
-                """
-            ):
-                await self.conn.commit()
-
-            self.is_setup = True
-
-
 # Global state for the graph
 graph = None
 
@@ -64,11 +26,9 @@ async def lifespan(app: FastAPI):
     global graph
     DB_PATH = "checkpoints.sqlite"
 
-    async with FixedAsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
-        print("Initializing AsyncSqliteSaver (Patched) and Graph...")
+    async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
         graph = create_travai_graph(checkpointer)
         yield
-        print("Closing AsyncSqliteSaver...")
 
 
 # Initialize FastAPI app with lifespan
