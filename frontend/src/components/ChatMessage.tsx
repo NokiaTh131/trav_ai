@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, User, BookOpen } from 'lucide-react';
@@ -11,6 +11,20 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => {
   const isUser = message.role === 'user';
+
+  const loadingText = useMemo(() => {
+    const jokes = [
+      "Finding it in Guide book",
+      "It very messy here",
+      "Asking Tuk-Tuk driver",
+      "Unfolding big map",
+      "Sipping some Thai tea",
+      "Checking the horoscope",
+      "Asking the spirits",
+      "Translating from Thai"
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+  }, []);
 
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} py-4`}>
@@ -37,7 +51,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => 
             prose-p:leading-relaxed prose-pre:bg-gray-100 prose-pre:text-gray-900
             ${isUser ? 'bg-gray-100 p-3 rounded-2xl rounded-tr-sm inline-block text-left' : ''}
           `}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+            {!isUser && !message.content ? (
+              <span className="text-gray-400 italic loading-dots">
+                {loadingText}
+              </span>
+            ) : (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+            )}
           </div>
 
           {/* Sources Button */}
