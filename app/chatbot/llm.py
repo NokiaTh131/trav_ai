@@ -40,7 +40,7 @@ async def get_all_tools():
 
 # 2. Initialize LLM
 llm = ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="openai/gpt-oss-20b",
     temperature=0.5,
     max_tokens=4048,
     timeout=None,

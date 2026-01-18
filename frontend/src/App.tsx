@@ -31,6 +31,10 @@ function App() {
   const [pdfSources, setPdfSources] = useState<Source[]>([]);
   const pdfUrl = "/thourist_thailand_guide.pdf";
 
+  // Refs for Typewriter Effect
+  const streamBufferRef = useRef("");
+  const displayedContentRef = useRef("");
+  const isNetworkDoneRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -177,6 +181,57 @@ function App() {
   }, [currentSessionId, apiKey]);
 
 
+  // Typewriter Effect Logic
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const interval = setInterval(() => {
+      const buffer = streamBufferRef.current;
+      const displayed = displayedContentRef.current;
+
+      // If we have content to type
+      if (displayed.length < buffer.length) {
+        // Type 2 characters at a time for good speed (adjustable)
+        const nextChunk = buffer.slice(displayed.length, displayed.length + 2);
+        displayedContentRef.current += nextChunk;
+
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          const lastMsg = newMsgs[newMsgs.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            newMsgs[newMsgs.length - 1] = { ...lastMsg, content: displayedContentRef.current };
+          }
+          return newMsgs;
+        });
+      }
+      // If typing is caught up AND network is finished
+      else if (isNetworkDoneRef.current) {
+        clearInterval(interval);
+
+        // Final cleanup & processing
+        const finalContent = streamBufferRef.current;
+        const { cleanedContent, sources } = processContentForSources(finalContent);
+
+        if (sources.length > 0) {
+          setPdfSources(sources);
+          setPdfPage(sources[0].page);
+          setIsPdfOpen(true);
+        }
+
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          newMsgs[newMsgs.length - 1] = { role: 'assistant', content: cleanedContent, sources };
+          return newMsgs;
+        });
+
+        setIsLoading(false);
+        isNetworkDoneRef.current = false;
+      }
+    }, 10); //tick
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   const handleCreateNewChat = () => {
     const newId = crypto.randomUUID();
     setCurrentSessionId(newId);
@@ -239,7 +294,13 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
     const currentInput = input;
     setInput('');
+
+    // Initialize Typewriter State
     setIsLoading(true);
+    streamBufferRef.current = "";
+    displayedContentRef.current = "";
+    isNetworkDoneRef.current = false;
+
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
     try {
@@ -266,25 +327,12 @@ function App() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let aiContent = "";
 
       while (true) {
         const { value, done } = await reader.read();
 
         if (done) {
-          // Stream finished. Final processing for source JSON.
-          const { cleanedContent, sources } = processContentForSources(aiContent);
-          if (sources.length > 0) {
-            setPdfSources(sources);
-            setPdfPage(sources[0].page);
-            setIsPdfOpen(true);
-          }
-
-          setMessages(prev => {
-            const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1] = { role: 'assistant', content: cleanedContent, sources };
-            return newMsgs;
-          });
+          isNetworkDoneRef.current = true;
           break;
         }
 
@@ -300,16 +348,9 @@ function App() {
               const data = JSON.parse(dataStr);
 
               if (typeof data.content === 'string') {
-                aiContent += data.content;
+                streamBufferRef.current += data.content;
               }
-
-              if (aiContent) {
-                setMessages(prev => {
-                  const newMsgs = [...prev];
-                  newMsgs[newMsgs.length - 1] = { role: 'assistant', content: aiContent };
-                  return newMsgs;
-                });
-              }
+              // No direct setMessages here - handled by useEffect
             } catch (e) {
               console.warn("Error parsing chunk:", e);
             }
@@ -319,15 +360,15 @@ function App() {
 
     } catch (error) {
       console.error("Streaming error:", error);
+      setIsLoading(false); // Stop typewriter immediately on error
       setMessages(prev => {
         const newMsgs = [...prev];
         const errMsg = error instanceof Error ? error.message : String(error);
         newMsgs[newMsgs.length - 1] = { role: 'assistant', content: `**Error:** ${errMsg}` };
         return newMsgs;
       });
-    } finally {
-      setIsLoading(false);
     }
+    // removed finally block - isLoading is handled by typewriter effect
   };
 
   return (
