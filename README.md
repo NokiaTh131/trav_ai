@@ -49,18 +49,21 @@ This project tests:
 ## Usage
 
 ### 1. Build the Memory
-First, parse the PDF documents and build the Memvid index. This runs the entity extraction and stores the data in a `.mv2` file.
 
 ```bash
 python app/mem/build_mem.py
 ```
 *Note: This processes PDFs located in `app/mem/`.*
 
-### 2. Run the Chatbot
-Use the LangGraph CLI to start the agent server.
+### 2. Run the Chatbot Server
 
 ```bash
-langgraph dev
+uv run -m app.server
+```
+### 3. Run the UI
+
+```bash
+npm run dev
 ```
 
 ## Project Structure
