@@ -12,6 +12,7 @@ dependencies = [
     "langchain>=1.2.3",
     "langchain-google-genai>=4.2.0",
     "langchain-groq>=1.1.1",
+    "langchain-mcp-adapters>=0.2.1",
     "langgraph-api>=0.4.28",
     "langgraph-checkpoint-sqlite>=3.0.2",
     "langgraph-cli[inmem]>=0.4.8",
