@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { Source } from '../types';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 // Configure the worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
@@ -106,45 +106,50 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
 
         {/* Toggle sources button - only show if sources exist */}
         {sources.length > 0 && (
-          <button
-            onClick={() => setIsSourcesOpen(!isSourcesOpen)}
-            className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
-            title={isSourcesOpen ? 'Hide sources' : 'Show sources'}
-          >
-            <span>Sources ({sources.length})</span>
-            {isSourcesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsSourcesOpen(!isSourcesOpen)}
+              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
+              title={isSourcesOpen ? 'Hide sources' : 'Show sources'}
+            >
+              <span>Sources ({sources.length})</span>
+              <ChevronDown size={14} className={`transform transition-transform ${isSourcesOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isSourcesOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden">
+                <div className="py-1 max-h-64 overflow-y-auto">
+                  <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-100 bg-gray-50">
+                    Ref Pages
+                  </h3>
+                  {sources.map((source, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        handleSourceClick(source.page);
+                        setIsSourcesOpen(false);
+                      }}
+                      className={`
+                        w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between
+                        ${pageNumber === source.page
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <span>Page {source.page}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Collapsible Sources Sidebar */}
-        {sources.length > 0 && isSourcesOpen && (
-          <div className="w-36 bg-white border-r border-gray-200 overflow-y-auto shrink-0">
-            <div className="p-3">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center justify-center">
-                Ref Pages
-              </h3>
-              <div className="space-y-1">
-                {sources.map((source, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSourceClick(source.page)}
-                    className={`
-                      w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-center
-                      ${pageNumber === source.page
-                        ? 'bg-blue-100 text-blue-700 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
-                      }
-                    `}
-                  >
-                    {source.page}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* PDF Canvas Area */}
         <div className="flex-1 overflow-auto flex justify-center p-4">
