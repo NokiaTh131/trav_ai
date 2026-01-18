@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
         print("Initializing AsyncSqliteSaver and Graph...")
         checkpointer_instance = checkpointer
-        graph = create_travai_graph(checkpointer)
+        graph = await create_travai_graph(checkpointer)
         yield
         print("Closing AsyncSqliteSaver...")
 
