@@ -1,4 +1,4 @@
-from langchain_groq import ChatGroq
+from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from memvid_sdk import use
@@ -39,8 +39,8 @@ async def get_all_tools():
 
 
 # 2. Initialize LLM
-llm = ChatGroq(
-    model="openai/gpt-oss-20b",
+llm = init_chat_model(
+    model=os.getenv("MODEL"),
     temperature=0.5,
     max_tokens=4048,
     timeout=None,
