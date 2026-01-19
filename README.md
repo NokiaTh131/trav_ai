@@ -41,10 +41,7 @@ This project tests:
    ```
 
 3. **Configure Environment**:
-   Create a `.env` file in the root directory with your LLM provider credentials (currently configured for Groq):
-   ```env
-   GROQ_API_KEY=your_api_key_here
-   ```
+   Create a `.env` file in the root directory look templete at `.env.example`
 
 ## Usage
 
