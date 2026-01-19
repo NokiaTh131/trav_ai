@@ -160,9 +160,18 @@ async def get_history(thread_id: str):
             history = []
             for msg in messages:
                 content = msg.content
+                if isinstance(content, list):
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, str):
+                            text_parts.append(part)
+                        elif isinstance(part, dict) and "text" in part:
+                            text_parts.append(part["text"])
+                    content = "".join(text_parts)
+
                 if (
-                    content.startswith("Answer: ")
-                    or not content
+                    not content
+                    or content.startswith("Answer: ")
                     or FOUND_RESULTS_REGEX.match(content.strip())
                 ):
                     continue
