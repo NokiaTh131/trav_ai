@@ -1,7 +1,14 @@
+export interface ToolCall {
+  index?: number;
+  name?: string;
+  args?: string;
+}
+
 export interface Message {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   sources?: Source[];
+  toolCalls?: ToolCall[];
 }
 
 export interface StreamEvent {

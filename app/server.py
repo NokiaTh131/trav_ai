@@ -4,7 +4,6 @@ import re
 import uvicorn
 import uuid
 import sqlite3
-import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import APIKeyHeader
@@ -22,7 +21,7 @@ graph = None
 checkpointer_instance = None
 DB_PATH = "checkpoints.sqlite"
 
-FOUND_RESULTS_REGEX = re.compile(r"^Found\s+\d+\s+results", re.IGNORECASE)
+FOUND_RESULTS_REGEX = re.compile(r"^Found\s+\d+\s+(?:search\s+)?results", re.IGNORECASE)
 
 
 # Helper for metadata management (synchronous sqlite3 for simplicity in metadata operations)
@@ -239,7 +238,7 @@ async def stream_agent(request: Request):
                     if "chunk" in event["data"]:
                         data_chunk = event["data"]["chunk"]
 
-                        # Stream tool calls to stdout
+                        # Stream tool calls
                         if (
                             hasattr(data_chunk, "tool_call_chunks")
                             and data_chunk.tool_call_chunks
@@ -247,14 +246,16 @@ async def stream_agent(request: Request):
                             for tc_chunk in data_chunk.tool_call_chunks:
                                 name = tc_chunk.get("name")
                                 args = tc_chunk.get("args")
+                                index = tc_chunk.get("index")
 
-                                if name:
-                                    sys.stdout.write(f"\n[Tool Call: {name}] args: ")
-                                    sys.stdout.flush()
-
-                                if args:
-                                    sys.stdout.write(args)
-                                    sys.stdout.flush()
+                                # Send to frontend
+                                tool_payload = {
+                                    "type": "tool_call",
+                                    "index": index,
+                                    "name": name,
+                                    "args": args,
+                                }
+                                yield f"data: {json.dumps(tool_payload)}\n\n"
 
                         if hasattr(data_chunk, "content"):
                             content = data_chunk.content
@@ -262,9 +263,6 @@ async def stream_agent(request: Request):
                                 payload = json.dumps({"content": content})
                                 yield f"data: {payload}\n\n"
 
-                elif kind == "on_tool_end":
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
             yield "event: end\ndata: {}\n\n"
         except Exception as e:
             error_data = json.dumps({"error": str(e)})

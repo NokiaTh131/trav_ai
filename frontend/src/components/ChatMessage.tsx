@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, User, BookOpen } from 'lucide-react';
+import { Bot, User, BookOpen, Wrench } from 'lucide-react';
 import { type Message, type Source } from '../types';
 
 interface ChatMessageProps {
@@ -44,6 +44,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => 
           <div className="font-semibold text-sm text-gray-900 mb-1">
             {isUser ? 'You' : 'Travai Guide'}
           </div>
+
+          {/* Tool Calls */}
+          {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
+            <div className="flex flex-col gap-2 mb-2">
+              {message.toolCalls.map((tool, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 w-fit">
+                  <Wrench size={12} className="text-gray-400" />
+                  <span className="font-mono font-medium">{tool.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Prose for Markdown */}
           <div className={`

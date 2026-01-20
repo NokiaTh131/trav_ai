@@ -5,7 +5,7 @@ import Sidebar from './components/Sidebar';
 import ChatHeader from './components/ChatHeader';
 import ChatInput from './components/ChatInput';
 import SettingsModal from './components/SettingsModal';
-import { type Message, type ChatSession, type Source } from './types';
+import { type Message, type ChatSession, type Source, type ToolCall } from './types';
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -35,6 +35,9 @@ function App() {
   const streamBufferRef = useRef("");
   const displayedContentRef = useRef("");
   const isNetworkDoneRef = useRef(false);
+
+  // Ref for Tool Calls
+  const currentToolCallsRef = useRef<Record<number, ToolCall>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -300,6 +303,7 @@ function App() {
     streamBufferRef.current = "";
     displayedContentRef.current = "";
     isNetworkDoneRef.current = false;
+    currentToolCallsRef.current = {};
 
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
@@ -350,7 +354,33 @@ function App() {
               if (typeof data.content === 'string') {
                 streamBufferRef.current += data.content;
               }
-              // No direct setMessages here - handled by useEffect
+
+              // Handle Tool Calls
+              if (data.type === 'tool_call') {
+                const { index, name, args } = data;
+                if (index !== undefined) {
+                  if (!currentToolCallsRef.current[index]) {
+                    currentToolCallsRef.current[index] = { name: '', args: '' };
+                  }
+                  if (name) currentToolCallsRef.current[index].name = name;
+                  if (args) currentToolCallsRef.current[index].args += args;
+
+                  // Update state immediately for tools (no typewriter delay needed)
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const lastMsg = newMsgs[newMsgs.length - 1];
+                    if (lastMsg && lastMsg.role === 'assistant') {
+                      newMsgs[newMsgs.length - 1] = {
+                        ...lastMsg,
+                        toolCalls: Object.values(currentToolCallsRef.current)
+                      };
+                    }
+                    return newMsgs;
+                  });
+                }
+              }
+
+              // No direct setMessages here for content - handled by useEffect
             } catch (e) {
               console.warn("Error parsing chunk:", e);
             }
