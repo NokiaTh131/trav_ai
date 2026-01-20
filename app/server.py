@@ -4,6 +4,7 @@ import re
 import uvicorn
 import uuid
 import sqlite3
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import APIKeyHeader
@@ -237,11 +238,33 @@ async def stream_agent(request: Request):
                 if kind == "on_chat_model_stream":
                     if "chunk" in event["data"]:
                         data_chunk = event["data"]["chunk"]
+
+                        # Stream tool calls to stdout
+                        if (
+                            hasattr(data_chunk, "tool_call_chunks")
+                            and data_chunk.tool_call_chunks
+                        ):
+                            for tc_chunk in data_chunk.tool_call_chunks:
+                                name = tc_chunk.get("name")
+                                args = tc_chunk.get("args")
+
+                                if name:
+                                    sys.stdout.write(f"\n[Tool Call: {name}] args: ")
+                                    sys.stdout.flush()
+
+                                if args:
+                                    sys.stdout.write(args)
+                                    sys.stdout.flush()
+
                         if hasattr(data_chunk, "content"):
                             content = data_chunk.content
                             if content:
                                 payload = json.dumps({"content": content})
                                 yield f"data: {payload}\n\n"
+
+                elif kind == "on_tool_end":
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
             yield "event: end\ndata: {}\n\n"
         except Exception as e:
             error_data = json.dumps({"error": str(e)})
