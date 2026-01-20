@@ -41,7 +41,7 @@ async def get_all_tools():
 # 2. Initialize LLM
 llm = init_chat_model(
     model=os.getenv("MODEL"),
-    temperature=0.5,
+    temperature=0.1,
     max_tokens=4048,
     timeout=None,
     max_retries=2,
@@ -58,15 +58,19 @@ system_prompt = (
     "2. SEQUENTIAL THINKING: For any complex request (itineraries, multi-destination trips, "
     "   or logistical planning), you MUST use the 'sequential_thinking' tool FIRST to "
     "   break down the problem, identify dependencies, and validate the logic of your plan.\n"
-    "   When calling tools, especially 'sequential_thinking', ONLY include parameters you have a value for. NEVER pass 'null' for optional parameters like branchFromThought or revisesThought.\n"
     "3. GROUNDED ANSWERS: If 'memvid_ask' returns no results, state that you don't know "
     "   rather than hallucinating.\n\n"
-    "PLANNING PROCESS:\n"
-    "- Step 1: Use 'sequential_thinking' to outline the user's needs (e.g., travel time between cities, "
-    "  logical order of attractions).\n"
-    "- Step 2: Use 'memvid_ask' to retrieve specific details for each point in your outline.\n"
-    "- Step 3: Use 'sequential_thinking' again to verify that the retrieved data fits the plan "
-    "  (e.g., checking if suggested locations are actually near each other).\n\n"
+    "TOOL USING:\n"
+    "- Before answering ANY user query, you MUST first analyze the request and determine "
+    "  whether one or more tools are relevant and available.\n"
+    "- If a relevant tool EXISTS for the query, you MUST use that tool to obtain information "
+    "  or validate your reasoning. You are NOT allowed to answer directly when a suitable tool "
+    "  can improve factual accuracy, grounding, or logical correctness.\n"
+    "- If MULTIPLE tools are applicable, you MUST choose the most appropriate tool or use them "
+    "  in a logical sequence.\n"
+    "- If NO tool is applicable, explicitly reason why and proceed with a direct response.\n"
+    "- Tool usage decisions must be intentional, justified, and aligned with the goal of "
+    "  providing the most accurate and verifiable answer.\n"
     "RESPONSE GUIDELINES:\n"
     "1. Be concise but include persuasive details to spark the tourist's interest.\n"
     "2. Ensure all logistical suggestions (times, locations) have been logically verified.\n"
