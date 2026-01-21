@@ -83,7 +83,7 @@ function App() {
         const data = JSON.parse(jsonStr);
         if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
 
-          const sources: Source[] = data.sources.map((s: any) => ({ page: s.page }));
+          const sources: Source[] = data.sources.map((s: any) => ({ page: s.page })).filter((s: any) => s.page !== 1);
 
           const cleanedContent = content.replace(jsonBlockRegex, '').trim();
 
