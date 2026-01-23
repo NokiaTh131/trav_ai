@@ -7,6 +7,7 @@ import { type Message, type Source } from '../types';
 interface ChatMessageProps {
   message: Message;
   onViewSources?: (sources: Source[]) => void;
+  onLocationClick?: (location: string) => void;
 }
 
 const ThinkingIndicator = () => {
@@ -41,7 +42,7 @@ const ThinkingIndicator = () => {
   );
 };
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources, onLocationClick }) => {
   const isUser = message.role === 'user';
 
   return (
@@ -88,9 +89,38 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewSources }) => 
             ) : (
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
+                urlTransform={(url) => {
+                  if (url.startsWith('location://')) return url;
+                  return url;
+                }}
                 components={{
                   // Override paragraph for user messages to ensure white text inheritance
-                  p: ({node, ...props}) => <p className={isUser ? 'text-white' : ''} {...props} />
+                  p: ({node, ...props}) => <p className={isUser ? 'text-white' : ''} {...props} />,
+                  // Custom renderer for Location Links
+                  a: ({node, href, children, ...props}) => {
+                    if (href && (href.startsWith('location://') || href.includes('travai.location'))) {
+                      const locationName = href.replace('location://', '').replace('http://travai.location/', '').replace('https://travai.location/', '');
+                      const decodedName = decodeURIComponent(locationName);
+                      
+                      return (
+                        <span className="inline-block align-middle mx-1">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (onLocationClick) onLocationClick(decodedName);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-900 font-bold border border-orange-300 rounded-full transition-all cursor-pointer shadow-xs hover:shadow-sm transform hover:-translate-y-0.5 active:translate-y-0 text-xs no-underline"
+                            title={`Ask about ${decodedName}`}
+                          >
+                            <MapPin size={12} className="text-orange-600" />
+                            {children}
+                          </button>
+                        </span>
+                      );
+                    }
+                    return <a href={href} {...props} className="text-orange-600 hover:underline">{children}</a>
+                  }
                 }}
               >
                 {message.content}

@@ -306,9 +306,11 @@ function App() {
     localStorage.setItem('travai_api_key', key);
   };
 
-  const handleSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
+  const handleSubmit = async (e: React.FormEvent | React.KeyboardEvent, manualInput?: string) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    
+    const textToSend = manualInput || input;
+    if (!textToSend.trim() || isLoading) return;
 
     if (!apiKey) {
       alert("Please enter your API Key in settings.");
@@ -318,10 +320,9 @@ function App() {
 
     const isNewSession = !sessions.find(s => s.id === currentSessionId);
 
-    const userMessage: Message = { role: 'user', content: input };
+    const userMessage: Message = { role: 'user', content: textToSend };
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
-    setInput('');
+    setInput(''); // Clear input regardless
 
     // Cancel any previous pending request
     if (abortControllerRef.current) {
@@ -363,7 +364,7 @@ function App() {
       if (!response.body) throw new Error("No response body");
 
       if (isNewSession) {
-        const title = currentInput.slice(0, 30) + (currentInput.length > 30 ? '...' : '');
+        const title = textToSend.slice(0, 30) + (textToSend.length > 30 ? '...' : '');
         await updateThreadTitle(currentSessionId, title);
         fetchSessions();
       }
@@ -446,8 +447,13 @@ function App() {
     // removed finally block - isLoading is handled by typewriter effect
   };
 
+  const handleLocationClick = (location: string) => {
+    // Manually trigger submission with "Tell me more about [Location]"
+    handleSubmit({ preventDefault: () => {} } as any, `Tell me more about ${location}`);
+  };
+
   return (
-    <div className="flex h-screen w-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="flex h-screen w-screen bg-amber-50/30 text-gray-900 font-sans">
 
       <Sidebar
         isOpen={isSidebarOpen}
@@ -485,7 +491,12 @@ function App() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto pt-8 pb-32">
               {messages.map((msg, idx) => (
-                <ChatMessage key={idx} message={msg} onViewSources={handleViewSources} />
+                <ChatMessage 
+                  key={idx} 
+                  message={msg} 
+                  onViewSources={handleViewSources}
+                  onLocationClick={handleLocationClick} 
+                />
               ))}
               <div ref={messagesEndRef} />
             </div>

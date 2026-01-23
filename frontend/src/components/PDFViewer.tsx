@@ -196,7 +196,7 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
 
       {/* Floating Navigation Controls */}
       {numPages && !isLoading && (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-slate-900/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-slate-800 transition-transform hover:scale-105">
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-slate-900/60 hover:bg-slate-900/90 px-4 py-2 rounded-full shadow-lg transition-transform">
           <button
             onClick={handlePrevPage}
             disabled={!pageNumber || pageNumber <= 1}
