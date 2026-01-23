@@ -4,7 +4,6 @@ import { Menu, PanelRightClose, PanelLeftClose, MapPin } from 'lucide-react';
 interface ChatHeaderProps {
   isSidebarOpen: boolean;
   onOpenSidebar: () => void;
-  hasPdf: boolean;
   isPdfOpen: boolean;
   onTogglePdf: () => void;
 }
@@ -12,7 +11,6 @@ interface ChatHeaderProps {
 const ChatHeader: React.FC<ChatHeaderProps> = ({
   isSidebarOpen,
   onOpenSidebar,
-  hasPdf,
   isPdfOpen,
   onTogglePdf,
 }) => {
@@ -28,13 +26,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </button>
         )}
         <div className="flex items-center gap-2 text-slate-900">
-           <MapPin size={18} className="text-orange-500" />
-           <span className="font-bold text-lg tracking-tight font-serif">Travai Guide</span>
+          <MapPin size={18} className="text-orange-500" />
+          <span className="font-bold text-lg tracking-tight font-serif">Travai Guide</span>
         </div>
       </div>
 
       {/* PDF Toggle Button */}
-      {hasPdf && (
+      {(
         <button
           onClick={onTogglePdf}
           className={`

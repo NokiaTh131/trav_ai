@@ -38,7 +38,7 @@ function App() {
 
   // Ref for Tool Calls
   const currentToolCallsRef = useRef<Record<number, ToolCall>>({});
-  
+
   // Ref for AbortController to cancel pending requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -141,7 +141,7 @@ function App() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    
+
     // Reset typewriter state
     setIsLoading(false);
     streamBufferRef.current = "";
@@ -308,7 +308,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent | React.KeyboardEvent, manualInput?: string) => {
     e.preventDefault();
-    
+
     const textToSend = manualInput || input;
     if (!textToSend.trim() || isLoading) return;
 
@@ -354,7 +354,7 @@ function App() {
         }),
         signal: abortController.signal
       });
-      
+
       if (response.status === 403) {
         setShowSettings(true);
         throw new Error("Invalid API Key");
@@ -442,14 +442,14 @@ function App() {
         return newMsgs;
       });
     } finally {
-        abortControllerRef.current = null;
+      abortControllerRef.current = null;
     }
     // removed finally block - isLoading is handled by typewriter effect
   };
 
   const handleLocationClick = (location: string) => {
     // Manually trigger submission with "Tell me more about [Location]"
-    handleSubmit({ preventDefault: () => {} } as any, `Tell me more about ${location}`);
+    handleSubmit({ preventDefault: () => { } } as any, `Tell me more about ${location}`);
   };
 
   return (
@@ -475,7 +475,6 @@ function App() {
           <ChatHeader
             isSidebarOpen={isSidebarOpen}
             onOpenSidebar={() => setIsSidebarOpen(true)}
-            hasPdf={pdfSources.length > 0}
             isPdfOpen={isPdfOpen}
             onTogglePdf={() => setIsPdfOpen(!isPdfOpen)}
           />
@@ -491,11 +490,11 @@ function App() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto pt-8 pb-32">
               {messages.map((msg, idx) => (
-                <ChatMessage 
-                  key={idx} 
-                  message={msg} 
+                <ChatMessage
+                  key={idx}
+                  message={msg}
                   onViewSources={handleViewSources}
-                  onLocationClick={handleLocationClick} 
+                  onLocationClick={handleLocationClick}
                 />
               ))}
               <div ref={messagesEndRef} />
@@ -511,15 +510,15 @@ function App() {
         </div>
 
         {/* PDF Viewer (Right Side) */}
-        {pdfUrl && pdfSources.length > 0 &&
-          <div className={`${isPdfOpen ? `w-[40%] min-w-75` : `w-0 min-w-0`} transition-all duration-300 h-full hidden md:block border-l border-gray-200 overflow-hidden`}>
-            <PDFViewer
-              fileUrl={pdfUrl}
-              pageNumber={pdfPage}
-              sources={pdfSources}
-              onPageChange={setPdfPage}
-            />
-          </div>}
+
+        <div className={`${isPdfOpen ? `w-[40%] min-w-75` : `w-0 min-w-0`} transition-all duration-300 h-full hidden md:block border-l border-gray-200 overflow-hidden`}>
+          <PDFViewer
+            fileUrl={pdfUrl}
+            pageNumber={pdfPage}
+            sources={pdfSources}
+            onPageChange={setPdfPage}
+          />
+        </div>
 
       </div>
     </div>
