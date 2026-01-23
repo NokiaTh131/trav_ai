@@ -38,6 +38,9 @@ function App() {
 
   // Ref for Tool Calls
   const currentToolCallsRef = useRef<Record<number, ToolCall>>({});
+  
+  // Ref for AbortController to cancel pending requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +50,10 @@ function App() {
       const res = await fetch('http://localhost:2024/threads', {
         headers: { 'X-API-Key': apiKey }
       });
+      if (res.status === 403) {
+        setShowSettings(true);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -129,6 +136,18 @@ function App() {
   };
 
   useEffect(() => {
+    // Abort any ongoing streaming request when switching sessions
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Reset typewriter state
+    setIsLoading(false);
+    streamBufferRef.current = "";
+    displayedContentRef.current = "";
+    isNetworkDoneRef.current = false;
+
     const loadSession = async () => {
       if (!apiKey) return;
 
@@ -142,6 +161,12 @@ function App() {
           method: 'GET',
           headers: { 'X-API-Key': apiKey }
         });
+
+        if (response.status === 403) {
+          setShowSettings(true);
+          setIsLoading(false);
+          return;
+        }
 
         if (response.ok) {
           const data = await response.json();
@@ -298,6 +323,14 @@ function App() {
     const currentInput = input;
     setInput('');
 
+    // Cancel any previous pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    // Create new AbortController
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     // Initialize Typewriter State
     setIsLoading(true);
     streamBufferRef.current = "";
@@ -317,8 +350,14 @@ function App() {
         body: JSON.stringify({
           messages: [userMessage],
           thread_id: currentSessionId
-        })
+        }),
+        signal: abortController.signal
       });
+      
+      if (response.status === 403) {
+        setShowSettings(true);
+        throw new Error("Invalid API Key");
+      }
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error("No response body");
@@ -388,7 +427,11 @@ function App() {
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log("Request aborted");
+        return;
+      }
       console.error("Streaming error:", error);
       setIsLoading(false); // Stop typewriter immediately on error
       setMessages(prev => {
@@ -397,12 +440,14 @@ function App() {
         newMsgs[newMsgs.length - 1] = { role: 'assistant', content: `**Error:** ${errMsg}` };
         return newMsgs;
       });
+    } finally {
+        abortControllerRef.current = null;
     }
     // removed finally block - isLoading is handled by typewriter effect
   };
 
   return (
-    <div className="flex h-screen w-screen bg-white text-gray-900 font-sans">
+    <div className="flex h-screen w-screen bg-slate-50 text-slate-900 font-sans">
 
       <Sidebar
         isOpen={isSidebarOpen}
@@ -456,7 +501,7 @@ function App() {
 
         {/* PDF Viewer (Right Side) */}
         {pdfUrl && pdfSources.length > 0 &&
-          <div className={`${isPdfOpen ? `w-[40%] min-w-75` : `w-0 min-w-0`} transition-all duration-300 h-full hidden md:block border-l border-gray-200`}>
+          <div className={`${isPdfOpen ? `w-[40%] min-w-75` : `w-0 min-w-0`} transition-all duration-300 h-full hidden md:block border-l border-gray-200 overflow-hidden`}>
             <PDFViewer
               fileUrl={pdfUrl}
               pageNumber={pdfPage}

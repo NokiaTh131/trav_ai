@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { Source } from '../types';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, BookOpen, Search, Map } from 'lucide-react';
 
 // Configure the worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
@@ -66,7 +66,7 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
 
       try {
         const page: PDFPageProxy = await pdfDocRef.current.getPage(currentPage);
-        const viewport = page.getViewport({ scale: 2 });
+        const viewport = page.getViewport({ scale: 2 }); // High res scale
 
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
@@ -75,6 +75,10 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
 
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+
+        // Maintain aspect ratio in CSS
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
 
         const renderContext = {
           canvasContext: context,
@@ -96,49 +100,68 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
     if (onPageChange) {
       onPageChange(page);
     }
+    setIsSourcesOpen(false);
+  };
+
+  const handlePrevPage = () => {
+    if (onPageChange && pageNumber && pageNumber > 1) {
+      onPageChange(pageNumber - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (onPageChange && numPages && (!pageNumber || pageNumber < numPages)) {
+      onPageChange((pageNumber || 1) + 1);
+    }
   };
 
   return (
-    <div className="h-full flex flex-col border-l border-gray-300 bg-gray-100">
-      {/* Header with toggle button */}
-      <div className="p-3 bg-white text-gray-700 border-b border-gray-200 font-semibold flex items-center justify-between">
-        <span>Guidebook Viewer</span>
+    <div className="h-full flex flex-col border-l border-slate-200 bg-slate-100 relative">
+      {/* Header */}
+      <div className="h-16 shrink-0 px-5 bg-white border-b border-slate-200 flex items-center justify-between z-10 sticky top-0">
+        <div className="flex items-center gap-2 text-slate-900 font-serif">
+          <BookOpen className="text-orange-500" size={20} />
+          <span className="font-bold tracking-tight text-lg">Travel Guide</span>
+        </div>
 
-        {/* Toggle sources button - only show if sources exist */}
+        {/* Sources Dropdown */}
         {sources.length > 0 && (
           <div className="relative">
             <button
               onClick={() => setIsSourcesOpen(!isSourcesOpen)}
-              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
-              title={isSourcesOpen ? 'Hide sources' : 'Show sources'}
+              className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                ${isSourcesOpen
+                  ? 'bg-slate-100 text-slate-900 ring-2 ring-slate-200'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}
+              `}
             >
-              <span>Sources ({sources.length})</span>
-              <ChevronDown size={14} className={`transform transition-transform ${isSourcesOpen ? 'rotate-180' : ''}`} />
+              <Search size={14} />
+              <span>Found {sources.length} Refs</span>
+              <ChevronDown size={14} className={`transform transition-transform duration-200 ${isSourcesOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isSourcesOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden">
-                <div className="py-1 max-h-64 overflow-y-auto">
-                  <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-100 bg-gray-50">
-                    Ref Pages
-                  </h3>
+              <div className="absolute right-0 top-full mt-3 w-56 bg-white rounded-xl shadow-xl shadow-slate-900/10 border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Related Pages</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1">
                   {sources.map((source, idx) => (
                     <button
                       key={idx}
-                      onClick={() => {
-                        handleSourceClick(source.page);
-                        setIsSourcesOpen(false);
-                      }}
+                      onClick={() => handleSourceClick(source.page)}
                       className={`
-                        w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between
+                        w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-3
                         ${pageNumber === source.page
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-orange-50 text-orange-900 font-semibold border-l-4 border-orange-500'
+                          : 'text-slate-600 hover:bg-slate-50 border-l-4 border-transparent'
                         }
                       `}
                     >
-                      <span>Page {source.page}</span>
+                      <Map size={14} className={pageNumber === source.page ? 'text-orange-500' : 'text-slate-400'} />
+                      <span>Jump to Page {source.page}</span>
                     </button>
                   ))}
                 </div>
@@ -148,25 +171,54 @@ export default function PDFViewer({ fileUrl, pageNumber, sources = [], onPageCha
         )}
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Canvas Area */}
+      <div className="flex-1 overflow-auto flex justify-center p-6 custom-scrollbar bg-slate-200/50">
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+            <span className="font-medium animate-pulse">Opening Guidebook...</span>
+          </div>
+        )}
 
+        {error && (
+          <div className="flex flex-col items-center justify-center h-full text-red-500 gap-2">
+            <span className="font-bold">⚠️ Unable to load PDF</span>
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
 
-        {/* PDF Canvas Area */}
-        <div className="flex-1 overflow-auto flex justify-center p-4">
-          {isLoading && <div className="p-4">Loading PDF...</div>}
-          {error && <div className="p-4 text-red-500">Error: {error}</div>}
-          {!isLoading && !error && (
-            <canvas ref={canvasRef} className="shadow-lg" />
-          )}
-        </div>
+        {!isLoading && !error && (
+          <div className="relative shadow-xl shadow-slate-900/10 rounded-sm overflow-hidden bg-white h-fit">
+            <canvas ref={canvasRef} className="block max-w-full" />
+          </div>
+        )}
       </div>
 
-      {/* Footer - Page Counter */}
-      {numPages && (
-        <div className="p-2 bg-white border-t border-gray-200 text-center text-sm text-gray-500">
-          Page {pageNumber || 1} of {numPages}
+      {/* Floating Navigation Controls */}
+      {numPages && !isLoading && (
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-slate-900/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-slate-800 transition-transform hover:scale-105">
+          <button
+            onClick={handlePrevPage}
+            disabled={!pageNumber || pageNumber <= 1}
+            className="p-1.5 rounded-full hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+
+          <span className="text-sm font-medium text-white font-mono">
+            {pageNumber || 1} / {numPages}
+          </span>
+
+          <button
+            onClick={handleNextPage}
+            disabled={!pageNumber || pageNumber >= numPages}
+            className="p-1.5 rounded-full hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
       )}
     </div>
   );
 }
+

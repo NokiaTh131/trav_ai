@@ -4,6 +4,7 @@ import re
 import uvicorn
 import uuid
 import sqlite3
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import APIKeyHeader
@@ -225,11 +226,14 @@ async def stream_agent(request: Request):
 
     save_thread_metadata(thread_id, "New Chat")
 
-    async def event_generator():
+    # Queue for streaming tokens between the background task and the HTTP response
+    queue = asyncio.Queue()
+
+    async def background_generator(config, input_messages, q: asyncio.Queue):
+        """Runs the graph in the background and pushes events to the queue."""
         try:
-            config = {"configurable": {"thread_id": thread_id}}
             async for event in graph.astream_events(  # pyright: ignore[reportOptionalMemberAccess]
-                {"messages": messages},
+                {"messages": input_messages},
                 config=config,  # pyright: ignore[reportArgumentType]
                 version="v2",  # pyright: ignore[reportArgumentType]
             ):
@@ -255,20 +259,44 @@ async def stream_agent(request: Request):
                                     "name": name,
                                     "args": args,
                                 }
-                                yield f"data: {json.dumps(tool_payload)}\n\n"
+                                await q.put(f"data: {json.dumps(tool_payload)}\n\n")
 
                         if hasattr(data_chunk, "content"):
                             content = data_chunk.content
                             if content:
                                 payload = json.dumps({"content": content})
-                                yield f"data: {payload}\n\n"
+                                await q.put(f"data: {payload}\n\n")
 
-            yield "event: end\ndata: {}\n\n"
+            await q.put("event: end\ndata: {}\n\n")
         except Exception as e:
+            print(f"Background task error: {e}")
             error_data = json.dumps({"error": str(e)})
-            yield f"event: error\ndata: {error_data}\n\n"
+            await q.put(f"event: error\ndata: {error_data}\n\n")
+        finally:
+            await q.put(None)  # Sentinel to signal end of stream
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    # Start the graph execution as a background task
+    # This ensures it keeps running even if the client disconnects
+    config = {"configurable": {"thread_id": thread_id}}
+    asyncio.create_task(background_generator(config, messages, queue))
+
+    async def response_generator():
+        """Consumes the queue and yields to the client."""
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield item
+        except asyncio.CancelledError:
+            # This happens when the client disconnects (e.g. switches threads)
+            # We explicitly catch it to allow the background task to continue running
+            print(
+                f"Client disconnected from thread {thread_id}. Background generation continuing."
+            )
+            raise
+
+    return StreamingResponse(response_generator(), media_type="text/event-stream")
 
 
 @app.get("/health")
