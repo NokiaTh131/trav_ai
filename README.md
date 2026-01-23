@@ -8,7 +8,7 @@
 
 *this is an experimental project designed to demonstrate the power of **[memvid](https://github.com/memvid/memvid)** when integrated with **LangChain**.*
 
-<img width="1554" height="810" alt="image" src="https://github.com/user-attachments/assets/b10a59e5-b1ee-4db0-9429-455c0e018842" />
+<img width="1553" height="935" alt="image" src="https://github.com/user-attachments/assets/febab486-3fb7-40ab-939d-4b1d11658a22" />
 
 The goal is to explore how Memvid can serve as an efficient knowledge retrieval layer for LLM agents. This specific implementation builds a **Thailand Tourist Guide** that strictly answers questions based on ingested PDF guidebooks, providing precise page citations.
 
