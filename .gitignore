@@ -14,4 +14,4 @@ wheels/
 
 worktree/
 
-checkpoints.sqlite
+checkpoints.sqlite*
